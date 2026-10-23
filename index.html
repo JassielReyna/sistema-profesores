@@ -7,127 +7,33 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <!-- Librería para exportar a Excel (.xlsx) con colores y diseño -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f9; margin: 0; }
         h1 { color: #333; margin-bottom: 20px; }
         
-        /* Burbuja de Notificaciones (Status) - Arriba de la cámara */
-        #status { 
-            margin: 0 auto 15px auto; 
-            padding: 12px; 
-            font-weight: bold; 
-            font-size: 1.2em; 
-            color: #0056b3; 
-            background-color: white; 
-            border-radius: 8px; 
-            max-width: 450px; 
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.08); 
-        }
-
-        /* Contenedor del Escáner optimizado */
-        #reader { 
-            width: 100%; 
-            max-width: 450px; 
-            margin: 0 auto; 
-            background: white; 
-            padding: 10px; 
-            border-radius: 8px; 
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.1); 
-        }
+        #status { margin: 0 auto 15px auto; padding: 12px; font-weight: bold; font-size: 1.2em; color: #0056b3; background-color: white; border-radius: 8px; max-width: 450px; box-shadow: 0px 4px 10px rgba(0,0,0,0.08); }
+        #reader { width: 100%; max-width: 450px; margin: 0 auto; background: white; padding: 10px; border-radius: 8px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
         
-        .botones-principales {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 20px;
-        }
-
+        .botones-principales { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
         .btn-toggle { background-color: #333; color: white; border: none; padding: 12px 22px; font-size: 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .btn-toggle:hover { background-color: #555; }
-
-        /* Botón verde para abrir panel de descargas */
         .btn-descarga { background-color: #28a745; }
         .btn-descarga:hover { background-color: #218838; }
 
-        /* Panel desplegable de Opciones de Descarga */
-        #panel-descarga {
-            display: none;
-            background: white;
-            max-width: 500px;
-            margin: 15px auto 0 auto;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
-            border-top: 4px solid #28a745;
-        }
+        #panel-descarga { display: none; background: white; max-width: 500px; margin: 15px auto 0 auto; padding: 20px; border-radius: 8px; box-shadow: 0px 4px 12px rgba(0,0,0,0.1); border-top: 4px solid #28a745; }
+        .selector-tipo-descarga { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-tipo-rep { flex: 1; padding: 10px; font-size: 14px; font-weight: bold; border: 2px solid #ddd; border-radius: 6px; background: #f9f9f9; color: #555; cursor: pointer; transition: 0.2s; }
+        .btn-tipo-rep.activo { border-color: #0056b3; background: #ebf5fb; color: #0056b3; }
 
-        .selector-tipo-descarga {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
+        .caja-filtro-fecha { display: flex; flex-direction: column; align-items: center; gap: 12px; background: #f4f6f9; padding: 15px; border-radius: 6px; }
+        .caja-filtro-fecha input { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; width: 80%; max-width: 240px; text-align: center; font-weight: bold; }
 
-        .btn-tipo-rep {
-            flex: 1;
-            padding: 10px;
-            font-size: 14px;
-            font-weight: bold;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            background: #f9f9f9;
-            color: #555;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .btn-tipo-rep.activo {
-            border-color: #0056b3;
-            background: #ebf5fb;
-            color: #0056b3;
-        }
-
-        .caja-filtro-fecha {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            background: #f4f6f9;
-            padding: 15px;
-            border-radius: 6px;
-        }
-
-        .caja-filtro-fecha input {
-            padding: 10px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            width: 80%;
-            max-width: 240px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .btn-confirmar-descarga {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            font-size: 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-            max-width: 280px;
-            transition: 0.3s;
-        }
+        .btn-confirmar-descarga { background-color: #28a745; color: white; border: none; padding: 12px 20px; font-size: 15px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; max-width: 280px; transition: 0.3s; }
         .btn-confirmar-descarga:hover { background-color: #1e7e34; }
 
         #contenedor-tabla { display: none; margin-top: 20px; overflow-x: auto; }
-        
         table { width: 100%; max-width: 650px; margin: 0 auto; border-collapse: collapse; background: white; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
         th { background-color: #0056b3; color: white; }
@@ -136,30 +42,8 @@
         .hora-entrada { color: #1e8449; font-weight: bold; }
         .hora-salida { color: #0056b3; font-weight: bold; }
 
-        #reader select {
-            padding: 12px !important;
-            font-size: 16px !important;
-            margin-bottom: 20px !important;
-            border-radius: 5px !important;
-            width: 90% !important;
-            max-width: 300px !important;
-            border: 2px solid #ccc !important;
-        }
-        
-        #reader button {
-            padding: 15px 25px !important;
-            font-size: 16px !important;
-            margin: 10px !important;
-            border-radius: 8px !important;
-            background-color: #0056b3 !important;
-            color: white !important;
-            border: none !important;
-            font-weight: bold !important;
-            cursor: pointer !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
-            transition: 0.3s !important;
-        }
-
+        #reader select { padding: 12px !important; font-size: 16px !important; margin-bottom: 20px !important; border-radius: 5px !important; width: 90% !important; max-width: 300px !important; border: 2px solid #ccc !important; }
+        #reader button { padding: 15px 25px !important; font-size: 16px !important; margin: 10px !important; border-radius: 8px !important; background-color: #0056b3 !important; color: white !important; border: none !important; font-weight: bold !important; cursor: pointer !important; box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important; transition: 0.3s !important; }
         #reader button:hover { background-color: #004494 !important; }
         #reader a { font-size: 16px !important; display: inline-block !important; margin-top: 15px !important; padding: 10px !important; color: #0056b3 !important; }
     </style>
@@ -167,36 +51,25 @@
 <body>
 
     <h1>Control de Asistencia para Empleados</h1>
-    
-    <!-- BURBUJA DE ESTADO (Arriba y siempre visible) -->
     <div id="status">Iniciando sistema...</div>
-
-    <!-- CÁMARA -->
     <div id="reader"></div>
 
-    <!-- Botones inferiores -->
     <div class="botones-principales">
         <button id="btn-tabla" class="btn-toggle" onclick="toggleTabla()">📋 Ver registros de hoy</button>
         <button id="btn-abrir-descarga" class="btn-toggle btn-descarga" onclick="togglePanelDescarga()">📊 Descargar Reportes</button>
     </div>
 
-    <!-- PANEL DESPLEGABLE PARA EL SUPERVISOR / DIRECTIVO -->
     <div id="panel-descarga">
         <h3 style="margin-top: 0; margin-bottom: 12px; color: #333;">Selecciona el tipo de reporte a descargar:</h3>
-        
         <div class="selector-tipo-descarga">
             <button id="btn-modo-dia" class="btn-tipo-rep activo" onclick="cambiarModoDescarga('dia')">📅 Por Día Específico</button>
             <button id="btn-modo-mes" class="btn-tipo-rep" onclick="cambiarModoDescarga('mes')">🗓️ Lista Completa del Mes</button>
         </div>
-
-        <!-- Opción 1: Descargar un día específico -->
         <div id="filtro-descarga-dia" class="caja-filtro-fecha">
             <label><strong>Elige la fecha a consultar:</strong></label>
             <input type="date" id="input-fecha-especifica">
             <button class="btn-confirmar-descarga" onclick="descargarExcelDia()">⬇️ Descargar Excel del Día</button>
         </div>
-
-        <!-- Opción 2: Descargar todo el mes -->
         <div id="filtro-descarga-mes" class="caja-filtro-fecha" style="display: none;">
             <label><strong>Elige el mes completo:</strong></label>
             <input type="month" id="input-mes-completo">
@@ -204,17 +77,11 @@
         </div>
     </div>
 
-    <!-- TABLA EN VIVO DE REGISTROS DE HOY -->
     <div id="contenedor-tabla">
         <h2>Registros de Hoy</h2>
         <table>
             <thead>
-                <tr>
-                    <th>No.</th>
-                    <th>Profesor</th>
-                    <th>Entrada</th>
-                    <th>Salida</th>
-                </tr>
+                <tr><th>No.</th><th>Profesor</th><th>Entrada</th><th>Salida</th></tr>
             </thead>
             <tbody id="tabla-asistencias">
                 <tr><td colspan="4">Cargando datos...</td></tr>
@@ -223,109 +90,62 @@
     </div>
 
     <script>
-        // --- LLAVES DE SUPABASE (PROYECTO PROFESORES) ---
+        // --- LLAVES DE SUPABASE ---
         const URL_PROYECTO = 'https://kqdfoqityolwrxvpgblu.supabase.co';
         const LLAVE_PUBLICA = 'sb_publishable_rcACwicJA2Guh2Pth55S7g_qs8VcoI9';
         const clienteSupabase = supabase.createClient(URL_PROYECTO, LLAVE_PUBLICA);
 
-        // --- TOKEN DE TELEGRAM (PARA NOTIFICACIONES AL DIRECTIVO) ---
+        // --- TOKEN DE TELEGRAM ---
         const PARTE_1_TOKEN = '8887434969'; 
         const PARTE_2_TOKEN = 'AAH7a_QS4GqqjdFu0xnW1VCBVpP6IDPstn4'; 
         const TOKEN_TELEGRAM = PARTE_1_TOKEN + ':' + PARTE_2_TOKEN;
         let ultimoUpdateTelegram = 0; 
 
-        // --- SISTEMA DE SONIDO INTEGRADO ---
+        // --- SISTEMA DE SONIDO ---
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         const audioCtx = new AudioContextClass();
-
-        document.addEventListener('click', () => {
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-        });
+        document.addEventListener('click', () => { if (audioCtx.state === 'suspended') audioCtx.resume(); });
 
         function reproducirSonido(tipo) {
             try {
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
                 const ahora = audioCtx.currentTime;
-
                 if (tipo === 'exito') {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(987.77, ahora);
-                    osc.frequency.setValueAtTime(1318.51, ahora + 0.08);
-                    gain.gain.setValueAtTime(0.35, ahora);
-                    gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.22);
-                    osc.start(ahora);
-                    osc.stop(ahora + 0.22);
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(987.77, ahora); osc.frequency.setValueAtTime(1318.51, ahora + 0.08);
+                    gain.gain.setValueAtTime(0.35, ahora); gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.22);
+                    osc.start(ahora); osc.stop(ahora + 0.22);
                 } else if (tipo === 'alerta') {
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(440, ahora);
-                    osc.frequency.setValueAtTime(330, ahora + 0.12);
-                    gain.gain.setValueAtTime(0.35, ahora);
-                    gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.28);
-                    osc.start(ahora);
-                    osc.stop(ahora + 0.28);
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(440, ahora); osc.frequency.setValueAtTime(330, ahora + 0.12);
+                    gain.gain.setValueAtTime(0.35, ahora); gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.28);
+                    osc.start(ahora); osc.stop(ahora + 0.28);
                 } else if (tipo === 'error') {
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(160, ahora);
-                    gain.gain.setValueAtTime(0.3, ahora);
-                    gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.35);
-                    osc.start(ahora);
-                    osc.stop(ahora + 0.35);
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(160, ahora);
+                    gain.gain.setValueAtTime(0.3, ahora); gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.35);
+                    osc.start(ahora); osc.stop(ahora + 0.35);
                 }
-            } catch (e) {
-                console.error("No se pudo reproducir el sonido:", e);
-            }
+            } catch (e) {}
         }
 
         const statusText = document.getElementById('status');
-        let ultimoEscaneo = ""; 
-        let procesandoEscaneo = false;
-
-        // Inicializar selectores de fecha y mes con el día y mes actual
+        let ultimoEscaneo = ""; let procesandoEscaneo = false;
         const ahoraInit = new Date();
         document.getElementById('input-fecha-especifica').value = ahoraInit.toLocaleDateString('sv-SE');
         document.getElementById('input-mes-completo').value = `${ahoraInit.getFullYear()}-${String(ahoraInit.getMonth() + 1).padStart(2, '0')}`;
         
-        // Cuadrante dinámico al 85% de la cámara
-        const escaner = new Html5QrcodeScanner("reader", { 
-            fps: 10, 
-            qrbox: function(viewfinderWidth, viewfinderHeight) {
-                let areaVisible = Math.min(viewfinderWidth, viewfinderHeight);
-                let tamañoCuadrante = Math.floor(areaVisible * 0.85); 
-                return { width: tamañoCuadrante, height: tamañoCuadrante };
-            }
-        }, false);
+        const escaner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: function(vw, vh) { let a = Math.min(vw, vh); return { width: Math.floor(a * 0.85), height: Math.floor(a * 0.85) }; } }, false);
 
         function toggleTabla() {
-            const contenedor = document.getElementById('contenedor-tabla');
-            const boton = document.getElementById('btn-tabla');
-            if (contenedor.style.display === 'none' || contenedor.style.display === '') {
-                contenedor.style.display = 'block';
-                boton.innerText = '📋 Ocultar registros de hoy';
-            } else {
-                contenedor.style.display = 'none';
-                boton.innerText = '📋 Ver registros de hoy';
-            }
+            const cont = document.getElementById('contenedor-tabla'); const btn = document.getElementById('btn-tabla');
+            if (cont.style.display === 'none' || cont.style.display === '') { cont.style.display = 'block'; btn.innerText = '📋 Ocultar registros de hoy'; } 
+            else { cont.style.display = 'none'; btn.innerText = '📋 Ver registros de hoy'; }
         }
 
         function togglePanelDescarga() {
-            const panel = document.getElementById('panel-descarga');
-            const boton = document.getElementById('btn-abrir-descarga');
-            if (panel.style.display === 'none' || panel.style.display === '') {
-                panel.style.display = 'block';
-                boton.innerText = '✖️ Cerrar Opciones de Descarga';
-            } else {
-                panel.style.display = 'none';
-                boton.innerText = '📊 Descargar Reportes';
-            }
+            const panel = document.getElementById('panel-descarga'); const btn = document.getElementById('btn-abrir-descarga');
+            if (panel.style.display === 'none' || panel.style.display === '') { panel.style.display = 'block'; btn.innerText = '✖️ Cerrar Opciones de Descarga'; } 
+            else { panel.style.display = 'none'; btn.innerText = '📊 Descargar Reportes'; }
         }
 
         function cambiarModoDescarga(modo) {
@@ -336,41 +156,21 @@
         }
 
         async function cargarAsistencias() {
-            const ahora = new Date();
-            const fechaHoy = ahora.toLocaleDateString('sv-SE'); 
-            const { data, error } = await clienteSupabase
-                .from('asistencias_diarias')
-                .select('hora_entrada, hora_salida, profesores(nombre_completo)')
-                .eq('fecha', fechaHoy)
-                .order('hora_entrada', { ascending: false });
-
-            const tablaCuerpo = document.getElementById('tabla-asistencias');
-            tablaCuerpo.innerHTML = ""; 
-            if (error || !data || data.length === 0) {
-                tablaCuerpo.innerHTML = "<tr><td colspan='4'>Aún no hay registros hoy.</td></tr>";
-                return;
-            }
+            const fechaHoy = new Date().toLocaleDateString('sv-SE'); 
+            const { data, error } = await clienteSupabase.from('asistencias_diarias').select('hora_entrada, hora_salida, profesores(nombre_completo)').eq('fecha', fechaHoy).order('hora_entrada', { ascending: false });
+            const tablaCuerpo = document.getElementById('tabla-asistencias'); tablaCuerpo.innerHTML = ""; 
+            if (error || !data || data.length === 0) { tablaCuerpo.innerHTML = "<tr><td colspan='4'>Aún no hay registros hoy.</td></tr>"; return; }
             data.forEach((registro, index) => {
-                const num = index + 1;
                 const nombre = registro.profesores?.nombre_completo || "Profesor";
-                const entrada = registro.hora_entrada || "---";
-                const salida = registro.hora_salida || "---";
-                tablaCuerpo.innerHTML += `
-                    <tr>
-                        <td>${num}</td>
-                        <td class="nombre-profe">${nombre}</td>
-                        <td class="hora-entrada">${entrada}</td>
-                        <td class="hora-salida">${salida}</td>
-                    </tr>`;
+                tablaCuerpo.innerHTML += `<tr><td>${index + 1}</td><td class="nombre-profe">${nombre}</td><td class="hora-entrada">${registro.hora_entrada || "---"}</td><td class="hora-salida">${registro.hora_salida || "---"}</td></tr>`;
             });
         }
 
         // ==========================================
-        // 🤖 ROBOT AUTO-VINCULADOR VIP (DIRECTIVO) 🤖
+        // 🤖 ROBOT AUTO-VINCULADOR EN LA NUBE ☁️
         // ==========================================
         async function procesarNuevosMensajesTelegram() {
             if (PARTE_1_TOKEN === 'PEGAR_AQUI_LOS_NUMEROS') return;
-            
             const url = `https://api.telegram.org/bot${TOKEN_TELEGRAM}/getUpdates?offset=${ultimoUpdateTelegram + 1}`;
             try {
                 const response = await fetch(url);
@@ -384,114 +184,123 @@
                             const textoRecibido = update.message.text.trim().toUpperCase();
                             const chatId = update.message.chat.id;
                             
-                            // Detectar si el directivo envía el comando secreto
                             if (textoRecibido === 'VINCULAR DIRECTIVO') {
-                                // Guardar el ID del directivo de manera permanente en esta computadora
-                                localStorage.setItem('chat_id_directivo', chatId.toString());
+                                await clienteSupabase.from('configuracion').update({ chat_id_directivo: chatId.toString() }).eq('id', 1);
                                 
-                                // Responderle al directivo confirmando la vinculación
-                                const confirmUrl = `https://api.telegram.org/bot${TOKEN_TELEGRAM}/sendMessage`;
-                                await fetch(confirmUrl, {
+                                await fetch(`https://api.telegram.org/bot${TOKEN_TELEGRAM}/sendMessage`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ 
                                         chat_id: chatId, 
-                                        text: "✅ ¡Cuenta de Directivo enlazada exitosamente!\n\nA partir de ahora recibirá en este chat las notificaciones de entrada y salida de todos los profesores en tiempo real." 
+                                        text: "✅ ¡Cuenta de Directivo enlazada en la nube!\n\nSu configuración ha sido guardada en la base de datos principal. No importa si cambian de computadora o abren el sistema desde un celular, los avisos llegarán aquí." 
                                     })
                                 });
                             }
                         }
                     }
                 }
-            } catch (error) { console.error("Error en Auto-Vinculador VIP", error); }
+            } catch (error) { console.error("Error en Auto-Vinculador Nube", error); }
         }
 
         // --- FUNCIÓN PARA ENVIAR ALERTAS AL DIRECTIVO ---
-        async function enviarAlertaDirectivo(mensaje) {
-            const chatIdDirectivo = localStorage.getItem('chat_id_directivo');
+        async function enviarAlertaDirectivo(chatIdDirectivo, mensaje) {
             if (!chatIdDirectivo || PARTE_1_TOKEN === 'PEGAR_AQUI_LOS_NUMEROS') return;
-            
             const url = `https://api.telegram.org/bot${TOKEN_TELEGRAM}/sendMessage`;
             try { 
-                await fetch(url, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ chat_id: chatIdDirectivo, text: mensaje }) 
-                }); 
+                await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatIdDirectivo, text: mensaje }) }); 
             } catch (e) { console.error("Error al enviar alerta:", e); }
         }
 
-        // --- ESTILOS BASE PARA EXCEL ---
+        // --- ESCANEO EXITOSO ---
+        async function onScanSuccess(codigoEscaneado) {
+            if (procesandoEscaneo || codigoEscaneado === ultimoEscaneo) return;
+            procesandoEscaneo = true; ultimoEscaneo = codigoEscaneado;
+            statusText.innerText = "Buscando en la base de datos..."; statusText.style.color = "orange";
+
+            try {
+                const { data: profe, error: errorProfe } = await clienteSupabase.from('profesores').select('id, nombre_completo').eq('codigo_qr', codigoEscaneado).single();
+                if (errorProfe || !profe) {
+                    reproducirSonido('error'); statusText.innerText = "❌ Error: Este código no pertenece a ningún profesor."; statusText.style.color = "red"; reiniciarEscaner(); return;
+                }
+
+                const fechaHoy = new Date().toLocaleDateString('sv-SE'); 
+                const horaActual = new Date().toLocaleTimeString('en-GB'); 
+
+                const { data: registrosHoy } = await clienteSupabase.from('asistencias_diarias').select('*').eq('profesor_id', profe.id).eq('fecha', fechaHoy).limit(1); 
+                const asistencia = (registrosHoy && registrosHoy.length > 0) ? registrosHoy[0] : null;
+
+                const { data: config } = await clienteSupabase.from('configuracion').select('chat_id_directivo').eq('id', 1).single();
+                const chatIdCloud = config ? config.chat_id_directivo : null;
+
+                if (!asistencia) {
+                    await clienteSupabase.from('asistencias_diarias').insert([{ profesor_id: profe.id, fecha: fechaHoy, hora_entrada: horaActual }]);
+                    reproducirSonido('exito'); statusText.innerText = `✅ ENTRADA REGISTRADA: ${profe.nombre_completo}`; statusText.style.color = "green";
+                    enviarAlertaDirectivo(chatIdCloud, `🏫 CONTROL DE ASISTENCIA\n\n🟢 ENTRADA REGISTRADA\nProfesor(a): ${profe.nombre_completo}\nHora: ${horaActual}`);
+                } else if (!asistencia.hora_salida) {
+                    await clienteSupabase.from('asistencias_diarias').update({ hora_salida: horaActual }).eq('id', asistencia.id);
+                    reproducirSonido('exito'); statusText.innerText = `👋 SALIDA REGISTRADA: ${profe.nombre_completo}`; statusText.style.color = "blue";
+                    enviarAlertaDirectivo(chatIdCloud, `🏫 CONTROL DE ASISTENCIA\n\n🔵 SALIDA REGISTRADA\nProfesor(a): ${profe.nombre_completo}\nHora: ${horaActual}`);
+                } else {
+                    reproducirSonido('alerta'); statusText.innerText = `⚠️ ${profe.nombre_completo} ya registró su salida hoy.`; statusText.style.color = "#856404";
+                }
+                cargarAsistencias(); 
+            } catch (error) {
+                reproducirSonido('error'); statusText.innerText = "Error de conexión. Intenta de nuevo."; statusText.style.color = "red";
+            }
+            reiniciarEscaner();
+        }
+
+        function onScanFailure(error) {}
+        function reiniciarEscaner() { setTimeout(() => { ultimoEscaneo = ""; procesandoEscaneo = false; statusText.innerText = "Cámara lista. Apunta a un código QR."; statusText.style.color = "#0056b3"; }, 4000); }
+
+        // --- FUNCIONES EXCEL (OCULTAS PARA AHORRAR ESPACIO, SE MANTIENEN IGUAL) ---
         const bordeDelgado = { top: { style: "thin", color: { rgb: "CCCCCC" } }, bottom: { style: "thin", color: { rgb: "CCCCCC" } }, left: { style: "thin", color: { rgb: "CCCCCC" } }, right: { style: "thin", color: { rgb: "CCCCCC" } } };
         const estiloEncabezadoAzul = { fill: { fgColor: { rgb: "0056B3" } }, font: { color: { rgb: "FFFFFF" }, bold: true, sz: 11 }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado };
 
-        // --- EXPORTACIÓN EXCEL ---
         async function descargarExcelDia() {
             const fechaElegida = document.getElementById('input-fecha-especifica').value;
             if (!fechaElegida) { alert("Por favor, selecciona una fecha."); return; }
-
             const { data, error } = await clienteSupabase.from('asistencias_diarias').select('fecha, hora_entrada, hora_salida, profesores(nombre_completo)').eq('fecha', fechaElegida).order('hora_entrada', { ascending: true });
             if (error || !data || data.length === 0) { alert(`No hay registros de asistencia en la fecha ${fechaElegida}.`); return; }
-
             const filasExcel = [[{ v: "No.", t: "s", s: estiloEncabezadoAzul }, { v: "Fecha", t: "s", s: estiloEncabezadoAzul }, { v: "Profesor", t: "s", s: estiloEncabezadoAzul }, { v: "Hora de Entrada", t: "s", s: estiloEncabezadoAzul }, { v: "Hora de Salida", t: "s", s: estiloEncabezadoAzul }]];
-
             data.forEach((registro, index) => {
                 const nombre = registro.profesores?.nombre_completo || "Sin nombre";
-                const tieneEntrada = Boolean(registro.hora_entrada);
-                const tieneSalida = Boolean(registro.hora_salida);
+                const tieneEntrada = Boolean(registro.hora_entrada); const tieneSalida = Boolean(registro.hora_salida);
                 const estiloEntrada = { fill: { fgColor: { rgb: tieneEntrada ? "E8F8F5" : "FDEDEC" } }, font: { color: { rgb: tieneEntrada ? "1E8449" : "999999" }, bold: tieneEntrada }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado };
                 const estiloSalida = { fill: { fgColor: { rgb: tieneSalida ? "EBF5FB" : "FAFAFA" } }, font: { color: { rgb: tieneSalida ? "0056B3" : "999999" }, bold: tieneSalida }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado };
-
                 filasExcel.push([
                     { v: index + 1, t: "n", s: { alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } },
                     { v: registro.fecha, t: "s", s: { alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } },
                     { v: nombre, t: "s", s: { font: { bold: true }, alignment: { horizontal: "left", vertical: "center" }, border: bordeDelgado } },
-                    { v: registro.hora_entrada || "Sin registro", t: "s", s: estiloEntrada },
-                    { v: registro.hora_salida || "Sin registro", t: "s", s: estiloSalida }
+                    { v: registro.hora_entrada || "Sin registro", t: "s", s: estiloEntrada }, { v: registro.hora_salida || "Sin registro", t: "s", s: estiloSalida }
                 ]);
             });
-
-            const hoja = XLSX.utils.aoa_to_sheet(filasExcel);
-            hoja['!cols'] = [{ wch: 6 }, { wch: 14 }, { wch: 35 }, { wch: 18 }, { wch: 18 }];
-            const libro = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(libro, hoja, `Día ${fechaElegida}`);
-            XLSX.writeFile(libro, `Asistencias_Profesores_Dia_${fechaElegida}.xlsx`);
+            const hoja = XLSX.utils.aoa_to_sheet(filasExcel); hoja['!cols'] = [{ wch: 6 }, { wch: 14 }, { wch: 35 }, { wch: 18 }, { wch: 18 }];
+            const libro = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(libro, hoja, `Día ${fechaElegida}`); XLSX.writeFile(libro, `Asistencias_Profesores_Dia_${fechaElegida}.xlsx`);
         }
 
         async function descargarExcelMes() {
             const mesElegido = document.getElementById('input-mes-completo').value;
             if (!mesElegido) { alert("Por favor, selecciona un mes."); return; }
-
-            const [anio, mes] = mesElegido.split('-');
-            const fechaInicio = `${anio}-${mes}-01`;
-            const fechaFin = new Date(anio, mes, 0).toLocaleDateString('sv-SE');
-
+            const [anio, mes] = mesElegido.split('-'); const fechaInicio = `${anio}-${mes}-01`; const fechaFin = new Date(anio, mes, 0).toLocaleDateString('sv-SE');
             const { data: listaProfesores } = await clienteSupabase.from('profesores').select('id, nombre_completo').order('nombre_completo', { ascending: true });
             const { data: registrosMes, error } = await clienteSupabase.from('asistencias_diarias').select('profesor_id, fecha, hora_entrada, hora_salida, profesores(nombre_completo)').gte('fecha', fechaInicio).lte('fecha', fechaFin).order('fecha', { ascending: true }).order('hora_entrada', { ascending: true });
-
             if (error || !registrosMes || registrosMes.length === 0) { alert(`No hay registros de asistencia en el mes ${mesElegido}.`); return; }
-
             const libro = XLSX.utils.book_new();
             const filasDetalladas = [[{ v: "No.", t: "s", s: estiloEncabezadoAzul }, { v: "Fecha", t: "s", s: estiloEncabezadoAzul }, { v: "Profesor", t: "s", s: estiloEncabezadoAzul }, { v: "Hora de Entrada", t: "s", s: estiloEncabezadoAzul }, { v: "Hora de Salida", t: "s", s: estiloEncabezadoAzul }]];
-
             registrosMes.forEach((registro, index) => {
                 const nombre = registro.profesores?.nombre_completo || "Sin nombre";
-                const tieneEntrada = Boolean(registro.hora_entrada);
-                const tieneSalida = Boolean(registro.hora_salida);
+                const tieneEntrada = Boolean(registro.hora_entrada); const tieneSalida = Boolean(registro.hora_salida);
                 const estiloEntrada = { fill: { fgColor: { rgb: tieneEntrada ? "E8F8F5" : "FDEDEC" } }, font: { color: { rgb: tieneEntrada ? "1E8449" : "999999" }, bold: tieneEntrada }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado };
                 const estiloSalida = { fill: { fgColor: { rgb: tieneSalida ? "EBF5FB" : "FAFAFA" } }, font: { color: { rgb: tieneSalida ? "0056B3" : "999999" }, bold: tieneSalida }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado };
-
                 filasDetalladas.push([
                     { v: index + 1, t: "n", s: { alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } },
                     { v: registro.fecha, t: "s", s: { alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } },
                     { v: nombre, t: "s", s: { font: { bold: true }, alignment: { horizontal: "left", vertical: "center" }, border: bordeDelgado } },
-                    { v: registro.hora_entrada || "Sin registro", t: "s", s: estiloEntrada },
-                    { v: registro.hora_salida || "Sin registro", t: "s", s: estiloSalida }
+                    { v: registro.hora_entrada || "Sin registro", t: "s", s: estiloEntrada }, { v: registro.hora_salida || "Sin registro", t: "s", s: estiloSalida }
                 ]);
             });
-
-            const hojaDetallada = XLSX.utils.aoa_to_sheet(filasDetalladas);
-            hojaDetallada['!cols'] = [{ wch: 6 }, { wch: 14 }, { wch: 35 }, { wch: 18 }, { wch: 18 }];
+            const hojaDetallada = XLSX.utils.aoa_to_sheet(filasDetalladas); hojaDetallada['!cols'] = [{ wch: 6 }, { wch: 14 }, { wch: 35 }, { wch: 18 }, { wch: 18 }];
             XLSX.utils.book_append_sheet(libro, hojaDetallada, "Lista del Mes");
 
             if (listaProfesores && listaProfesores.length > 0) {
@@ -499,7 +308,6 @@
                 const encabezadoMatriz = [{ v: "No.", t: "s", s: estiloEncabezadoAzul }, { v: "Profesor", t: "s", s: estiloEncabezadoAzul }];
                 fechasUnicas.forEach(f => { const dia = f.split('-')[2]; encabezadoMatriz.push({ v: `Día ${dia}`, t: "s", s: estiloEncabezadoAzul }); });
                 encabezadoMatriz.push({ v: "TOTAL ASISTENCIAS", t: "s", s: estiloEncabezadoAzul });
-
                 const filasMatriz = [encabezadoMatriz];
                 listaProfesores.forEach((profe, idx) => {
                     let totalAsistenciasProfe = 0;
@@ -507,117 +315,18 @@
                     fechasUnicas.forEach(fecha => {
                         const reg = registrosMes.find(r => r.profesor_id === profe.id && r.fecha === fecha);
                         if (reg) {
-                            totalAsistenciasProfe++;
-                            const ent = reg.hora_entrada ? reg.hora_entrada.slice(0, 5) : "--";
-                            const sal = reg.hora_salida ? reg.hora_salida.slice(0, 5) : "--";
+                            totalAsistenciasProfe++; const ent = reg.hora_entrada ? reg.hora_entrada.slice(0, 5) : "--"; const sal = reg.hora_salida ? reg.hora_salida.slice(0, 5) : "--";
                             fila.push({ v: `${ent} / ${sal}`, t: "s", s: { fill: { fgColor: { rgb: "E8F8F5" } }, font: { color: { rgb: "1E8449" }, bold: true, sz: 10 }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } });
-                        } else {
-                            fila.push({ v: "-", t: "s", s: { font: { color: { rgb: "999999" } }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } });
-                        }
+                        } else { fila.push({ v: "-", t: "s", s: { font: { color: { rgb: "999999" } }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } }); }
                     });
                     fila.push({ v: totalAsistenciasProfe, t: "n", s: { fill: { fgColor: { rgb: "EBF5FB" } }, font: { bold: true, color: { rgb: "0056B3" } }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } });
                     filasMatriz.push(fila);
                 });
-                const hojaMatriz = XLSX.utils.aoa_to_sheet(filasMatriz);
-                const anchosMatriz = [{ wch: 6 }, { wch: 35 }];
-                fechasUnicas.forEach(() => anchosMatriz.push({ wch: 15 }));
-                anchosMatriz.push({ wch: 20 });
-                hojaMatriz['!cols'] = anchosMatriz;
+                const hojaMatriz = XLSX.utils.aoa_to_sheet(filasMatriz); const anchosMatriz = [{ wch: 6 }, { wch: 35 }];
+                fechasUnicas.forEach(() => anchosMatriz.push({ wch: 15 })); anchosMatriz.push({ wch: 20 }); hojaMatriz['!cols'] = anchosMatriz;
                 XLSX.utils.book_append_sheet(libro, hojaMatriz, "Matriz Mensual");
             }
             XLSX.writeFile(libro, `Reporte_Mensual_Profesores_${mesElegido}.xlsx`);
-        }
-
-        async function onScanSuccess(codigoEscaneado) {
-            if (procesandoEscaneo || codigoEscaneado === ultimoEscaneo) return;
-            procesandoEscaneo = true;
-            ultimoEscaneo = codigoEscaneado;
-
-            statusText.innerText = "Buscando en la base de datos...";
-            statusText.style.color = "orange";
-
-            try {
-                const { data: profe, error: errorProfe } = await clienteSupabase
-                    .from('profesores')
-                    .select('id, nombre_completo')
-                    .eq('codigo_qr', codigoEscaneado)
-                    .single();
-
-                if (errorProfe || !profe) {
-                    reproducirSonido('error');
-                    statusText.innerText = "❌ Error: Este código no pertenece a ningún profesor.";
-                    statusText.style.color = "red";
-                    reiniciarEscaner();
-                    return;
-                }
-
-                const ahora = new Date();
-                const fechaHoy = ahora.toLocaleDateString('sv-SE'); 
-                const horaActual = ahora.toLocaleTimeString('en-GB'); 
-
-                const { data: registrosHoy, error: errorBusqueda } = await clienteSupabase
-                    .from('asistencias_diarias')
-                    .select('*')
-                    .eq('profesor_id', profe.id)
-                    .eq('fecha', fechaHoy)
-                    .limit(1); 
-
-                if (errorBusqueda) throw errorBusqueda;
-
-                const asistencia = (registrosHoy && registrosHoy.length > 0) ? registrosHoy[0] : null;
-
-                if (!asistencia) {
-                    const { error: errorInsert } = await clienteSupabase
-                        .from('asistencias_diarias')
-                        .insert([{ profesor_id: profe.id, fecha: fechaHoy, hora_entrada: horaActual }]);
-                    
-                    if (errorInsert) throw errorInsert;
-
-                    reproducirSonido('exito');
-                    statusText.innerText = `✅ ENTRADA REGISTRADA: ${profe.nombre_completo}`;
-                    statusText.style.color = "green";
-                    
-                    // Disparar Alerta a Telegram
-                    enviarAlertaDirectivo(`🏫 CONTROL DE ASISTENCIA\n\n🟢 ENTRADA REGISTRADA\nProfesor(a): ${profe.nombre_completo}\nHora: ${horaActual}`);
-
-                } else if (!asistencia.hora_salida) {
-                    const { error: errorUpdate } = await clienteSupabase
-                        .from('asistencias_diarias')
-                        .update({ hora_salida: horaActual })
-                        .eq('id', asistencia.id);
-
-                    if (errorUpdate) throw errorUpdate;
-
-                    reproducirSonido('exito');
-                    statusText.innerText = `👋 SALIDA REGISTRADA: ${profe.nombre_completo}`;
-                    statusText.style.color = "blue";
-                    
-                    // Disparar Alerta a Telegram
-                    enviarAlertaDirectivo(`🏫 CONTROL DE ASISTENCIA\n\n🔵 SALIDA REGISTRADA\nProfesor(a): ${profe.nombre_completo}\nHora: ${horaActual}`);
-
-                } else {
-                    reproducirSonido('alerta');
-                    statusText.innerText = `⚠️ ${profe.nombre_completo} ya registró su salida hoy.`;
-                    statusText.style.color = "#856404";
-                }
-                cargarAsistencias(); 
-            } catch (error) {
-                reproducirSonido('error');
-                statusText.innerText = "Error de conexión. Intenta de nuevo.";
-                statusText.style.color = "red";
-            }
-            reiniciarEscaner();
-        }
-
-        function onScanFailure(error) {}
-
-        function reiniciarEscaner() {
-            setTimeout(() => { 
-                ultimoEscaneo = ""; 
-                procesandoEscaneo = false;
-                statusText.innerText = "Cámara lista. Apunta a un código QR.";
-                statusText.style.color = "#0056b3";
-            }, 4000); 
         }
 
         function traducirEscaner() {
@@ -626,23 +335,14 @@
                 if (btn.innerText.includes("Request Camera Permissions")) btn.innerText = "Permitir acceso a la cámara";
                 if (btn.innerText.includes("Start Scanning")) btn.innerText = "Iniciar cámara";
                 if (btn.innerText.includes("Scan an Image File")) btn.innerText = "Escanear imagen";
-                
-                if (btn.innerText.includes("Stop Scanning") || btn.innerText.includes("Detener cámara")) {
-                    btn.innerText = "Detener cámara";
-                    if (btn.offsetParent !== null) { camaraActiva = true; }
-                }
+                if (btn.innerText.includes("Stop Scanning") || btn.innerText.includes("Detener cámara")) { btn.innerText = "Detener cámara"; if (btn.offsetParent !== null) { camaraActiva = true; } }
             });
-
-            document.querySelectorAll('#reader span').forEach(span => {
-                if (span.querySelector('select')) { span.style.display = camaraActiva ? 'none' : 'inline-block'; }
-            });
-
+            document.querySelectorAll('#reader span').forEach(span => { if (span.querySelector('select')) { span.style.display = camaraActiva ? 'none' : 'inline-block'; } });
             document.querySelectorAll('#reader a').forEach(a => {
                 if (a.innerText.includes("Scan an Image File")) a.innerText = "Escanear desde galería";
                 if (a.innerText.includes("Scan using camera directly")) a.innerText = "Escanear con cámara";
                 a.style.display = camaraActiva ? 'none' : 'inline-block';
             });
-
             document.querySelectorAll('span, div, label, p').forEach(elem => {
                 elem.childNodes.forEach(nodo => {
                     if (nodo.nodeType === 3) { 
@@ -653,7 +353,6 @@
                     }
                 });
             });
-
             document.querySelectorAll('option').forEach(opt => {
                 if (!opt.innerText.includes("Cámara")) {
                     if (opt.innerText.toLowerCase().includes("front")) opt.innerText = "Cámara Frontal";
@@ -663,14 +362,10 @@
         }
         
         setInterval(traducirEscaner, 500);
-        
-        // --- INICIALIZAR FUNCIONES ---
         escaner.render(onScanSuccess, onScanFailure);
         cargarAsistencias(); 
         
-        // Ejecutar el robot auto-vinculador del directivo cada 4 segundos
         setInterval(procesarNuevosMensajesTelegram, 4000);
-
     </script>
 </body>
 </html>
