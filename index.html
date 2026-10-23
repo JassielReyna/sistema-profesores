@@ -228,6 +228,12 @@
         const LLAVE_PUBLICA = 'sb_publishable_rcACwicJA2Guh2Pth55S7g_qs8VcoI9';
         const clienteSupabase = supabase.createClient(URL_PROYECTO, LLAVE_PUBLICA);
 
+        // --- TOKEN DE TELEGRAM (PARA NOTIFICACIONES AL DIRECTIVO) ---
+        const PARTE_1_TOKEN = '8887434969'; 
+        const PARTE_2_TOKEN = 'AAH7a_QS4GqqjdFu0xnW1VCBVpP6IDPstn4'; 
+        const TOKEN_TELEGRAM = PARTE_1_TOKEN + ':' + PARTE_2_TOKEN;
+        let ultimoUpdateTelegram = 0; 
+
         // --- SISTEMA DE SONIDO INTEGRADO ---
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         const audioCtx = new AudioContextClass();
@@ -359,66 +365,82 @@
             });
         }
 
+        // ==========================================
+        // 🤖 ROBOT AUTO-VINCULADOR VIP (DIRECTIVO) 🤖
+        // ==========================================
+        async function procesarNuevosMensajesTelegram() {
+            if (PARTE_1_TOKEN === 'PEGAR_AQUI_LOS_NUMEROS') return;
+            
+            const url = `https://api.telegram.org/bot${TOKEN_TELEGRAM}/getUpdates?offset=${ultimoUpdateTelegram + 1}`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.ok && data.result.length > 0) {
+                    for (const update of data.result) {
+                        ultimoUpdateTelegram = update.update_id; 
+                        
+                        if (update.message && update.message.text) {
+                            const textoRecibido = update.message.text.trim().toUpperCase();
+                            const chatId = update.message.chat.id;
+                            
+                            // Detectar si el directivo envía el comando secreto
+                            if (textoRecibido === 'VINCULAR DIRECTIVO') {
+                                // Guardar el ID del directivo de manera permanente en esta computadora
+                                localStorage.setItem('chat_id_directivo', chatId.toString());
+                                
+                                // Responderle al directivo confirmando la vinculación
+                                const confirmUrl = `https://api.telegram.org/bot${TOKEN_TELEGRAM}/sendMessage`;
+                                await fetch(confirmUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ 
+                                        chat_id: chatId, 
+                                        text: "✅ ¡Cuenta de Directivo enlazada exitosamente!\n\nA partir de ahora recibirá en este chat las notificaciones de entrada y salida de todos los profesores en tiempo real." 
+                                    })
+                                });
+                            }
+                        }
+                    }
+                }
+            } catch (error) { console.error("Error en Auto-Vinculador VIP", error); }
+        }
+
+        // --- FUNCIÓN PARA ENVIAR ALERTAS AL DIRECTIVO ---
+        async function enviarAlertaDirectivo(mensaje) {
+            const chatIdDirectivo = localStorage.getItem('chat_id_directivo');
+            if (!chatIdDirectivo || PARTE_1_TOKEN === 'PEGAR_AQUI_LOS_NUMEROS') return;
+            
+            const url = `https://api.telegram.org/bot${TOKEN_TELEGRAM}/sendMessage`;
+            try { 
+                await fetch(url, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ chat_id: chatIdDirectivo, text: mensaje }) 
+                }); 
+            } catch (e) { console.error("Error al enviar alerta:", e); }
+        }
+
         // --- ESTILOS BASE PARA EXCEL ---
-        const bordeDelgado = {
-            top: { style: "thin", color: { rgb: "CCCCCC" } },
-            bottom: { style: "thin", color: { rgb: "CCCCCC" } },
-            left: { style: "thin", color: { rgb: "CCCCCC" } },
-            right: { style: "thin", color: { rgb: "CCCCCC" } }
-        };
+        const bordeDelgado = { top: { style: "thin", color: { rgb: "CCCCCC" } }, bottom: { style: "thin", color: { rgb: "CCCCCC" } }, left: { style: "thin", color: { rgb: "CCCCCC" } }, right: { style: "thin", color: { rgb: "CCCCCC" } } };
+        const estiloEncabezadoAzul = { fill: { fgColor: { rgb: "0056B3" } }, font: { color: { rgb: "FFFFFF" }, bold: true, sz: 11 }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado };
 
-        const estiloEncabezadoAzul = {
-            fill: { fgColor: { rgb: "0056B3" } },
-            font: { color: { rgb: "FFFFFF" }, bold: true, sz: 11 },
-            alignment: { horizontal: "center", vertical: "center" },
-            border: bordeDelgado
-        };
-
-        // --- OPCIÓN 1: DESCARGAR EXCEL DE UN DÍA ESPECÍFICO ---
+        // --- EXPORTACIÓN EXCEL ---
         async function descargarExcelDia() {
             const fechaElegida = document.getElementById('input-fecha-especifica').value;
-            if (!fechaElegida) {
-                alert("Por favor, selecciona una fecha.");
-                return;
-            }
+            if (!fechaElegida) { alert("Por favor, selecciona una fecha."); return; }
 
-            const { data, error } = await clienteSupabase
-                .from('asistencias_diarias')
-                .select('fecha, hora_entrada, hora_salida, profesores(nombre_completo)')
-                .eq('fecha', fechaElegida)
-                .order('hora_entrada', { ascending: true });
+            const { data, error } = await clienteSupabase.from('asistencias_diarias').select('fecha, hora_entrada, hora_salida, profesores(nombre_completo)').eq('fecha', fechaElegida).order('hora_entrada', { ascending: true });
+            if (error || !data || data.length === 0) { alert(`No hay registros de asistencia en la fecha ${fechaElegida}.`); return; }
 
-            if (error || !data || data.length === 0) {
-                alert(`No hay registros de asistencia en la fecha ${fechaElegida}.`);
-                return;
-            }
-
-            const filasExcel = [[
-                { v: "No.", t: "s", s: estiloEncabezadoAzul },
-                { v: "Fecha", t: "s", s: estiloEncabezadoAzul },
-                { v: "Profesor", t: "s", s: estiloEncabezadoAzul },
-                { v: "Hora de Entrada", t: "s", s: estiloEncabezadoAzul },
-                { v: "Hora de Salida", t: "s", s: estiloEncabezadoAzul }
-            ]];
+            const filasExcel = [[{ v: "No.", t: "s", s: estiloEncabezadoAzul }, { v: "Fecha", t: "s", s: estiloEncabezadoAzul }, { v: "Profesor", t: "s", s: estiloEncabezadoAzul }, { v: "Hora de Entrada", t: "s", s: estiloEncabezadoAzul }, { v: "Hora de Salida", t: "s", s: estiloEncabezadoAzul }]];
 
             data.forEach((registro, index) => {
                 const nombre = registro.profesores?.nombre_completo || "Sin nombre";
                 const tieneEntrada = Boolean(registro.hora_entrada);
                 const tieneSalida = Boolean(registro.hora_salida);
-
-                const estiloEntrada = {
-                    fill: { fgColor: { rgb: tieneEntrada ? "E8F8F5" : "FDEDEC" } },
-                    font: { color: { rgb: tieneEntrada ? "1E8449" : "999999" }, bold: tieneEntrada },
-                    alignment: { horizontal: "center", vertical: "center" },
-                    border: bordeDelgado
-                };
-
-                const estiloSalida = {
-                    fill: { fgColor: { rgb: tieneSalida ? "EBF5FB" : "FAFAFA" } },
-                    font: { color: { rgb: tieneSalida ? "0056B3" : "999999" }, bold: tieneSalida },
-                    alignment: { horizontal: "center", vertical: "center" },
-                    border: bordeDelgado
-                };
+                const estiloEntrada = { fill: { fgColor: { rgb: tieneEntrada ? "E8F8F5" : "FDEDEC" } }, font: { color: { rgb: tieneEntrada ? "1E8449" : "999999" }, bold: tieneEntrada }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado };
+                const estiloSalida = { fill: { fgColor: { rgb: tieneSalida ? "EBF5FB" : "FAFAFA" } }, font: { color: { rgb: tieneSalida ? "0056B3" : "999999" }, bold: tieneSalida }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado };
 
                 filasExcel.push([
                     { v: index + 1, t: "n", s: { alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } },
@@ -431,75 +453,33 @@
 
             const hoja = XLSX.utils.aoa_to_sheet(filasExcel);
             hoja['!cols'] = [{ wch: 6 }, { wch: 14 }, { wch: 35 }, { wch: 18 }, { wch: 18 }];
-
             const libro = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(libro, hoja, `Día ${fechaElegida}`);
             XLSX.writeFile(libro, `Asistencias_Profesores_Dia_${fechaElegida}.xlsx`);
         }
 
-        // --- OPCIÓN 2: DESCARGAR TODA LA LISTA COMPLETA DE UN MES ---
         async function descargarExcelMes() {
             const mesElegido = document.getElementById('input-mes-completo').value;
-            if (!mesElegido) {
-                alert("Por favor, selecciona un mes.");
-                return;
-            }
+            if (!mesElegido) { alert("Por favor, selecciona un mes."); return; }
 
             const [anio, mes] = mesElegido.split('-');
             const fechaInicio = `${anio}-${mes}-01`;
             const fechaFin = new Date(anio, mes, 0).toLocaleDateString('sv-SE');
 
-            // 1. Traer todos los profesores ordenados alfabéticamente
-            const { data: listaProfesores } = await clienteSupabase
-                .from('profesores')
-                .select('id, nombre_completo')
-                .order('nombre_completo', { ascending: true });
+            const { data: listaProfesores } = await clienteSupabase.from('profesores').select('id, nombre_completo').order('nombre_completo', { ascending: true });
+            const { data: registrosMes, error } = await clienteSupabase.from('asistencias_diarias').select('profesor_id, fecha, hora_entrada, hora_salida, profesores(nombre_completo)').gte('fecha', fechaInicio).lte('fecha', fechaFin).order('fecha', { ascending: true }).order('hora_entrada', { ascending: true });
 
-            // 2. Traer todas las asistencias del mes
-            const { data: registrosMes, error } = await clienteSupabase
-                .from('asistencias_diarias')
-                .select('profesor_id, fecha, hora_entrada, hora_salida, profesores(nombre_completo)')
-                .gte('fecha', fechaInicio)
-                .lte('fecha', fechaFin)
-                .order('fecha', { ascending: true })
-                .order('hora_entrada', { ascending: true });
-
-            if (error || !registrosMes || registrosMes.length === 0) {
-                alert(`No hay registros de asistencia en el mes ${mesElegido}.`);
-                return;
-            }
+            if (error || !registrosMes || registrosMes.length === 0) { alert(`No hay registros de asistencia en el mes ${mesElegido}.`); return; }
 
             const libro = XLSX.utils.book_new();
-
-            // =========================================================================
-            // PESTAÑA 1: LISTA DETALLADA DEL MES (Día por día con horas exactas)
-            // =========================================================================
-            const filasDetalladas = [[
-                { v: "No.", t: "s", s: estiloEncabezadoAzul },
-                { v: "Fecha", t: "s", s: estiloEncabezadoAzul },
-                { v: "Profesor", t: "s", s: estiloEncabezadoAzul },
-                { v: "Hora de Entrada", t: "s", s: estiloEncabezadoAzul },
-                { v: "Hora de Salida", t: "s", s: estiloEncabezadoAzul }
-            ]];
+            const filasDetalladas = [[{ v: "No.", t: "s", s: estiloEncabezadoAzul }, { v: "Fecha", t: "s", s: estiloEncabezadoAzul }, { v: "Profesor", t: "s", s: estiloEncabezadoAzul }, { v: "Hora de Entrada", t: "s", s: estiloEncabezadoAzul }, { v: "Hora de Salida", t: "s", s: estiloEncabezadoAzul }]];
 
             registrosMes.forEach((registro, index) => {
                 const nombre = registro.profesores?.nombre_completo || "Sin nombre";
                 const tieneEntrada = Boolean(registro.hora_entrada);
                 const tieneSalida = Boolean(registro.hora_salida);
-
-                const estiloEntrada = {
-                    fill: { fgColor: { rgb: tieneEntrada ? "E8F8F5" : "FDEDEC" } },
-                    font: { color: { rgb: tieneEntrada ? "1E8449" : "999999" }, bold: tieneEntrada },
-                    alignment: { horizontal: "center", vertical: "center" },
-                    border: bordeDelgado
-                };
-
-                const estiloSalida = {
-                    fill: { fgColor: { rgb: tieneSalida ? "EBF5FB" : "FAFAFA" } },
-                    font: { color: { rgb: tieneSalida ? "0056B3" : "999999" }, bold: tieneSalida },
-                    alignment: { horizontal: "center", vertical: "center" },
-                    border: bordeDelgado
-                };
+                const estiloEntrada = { fill: { fgColor: { rgb: tieneEntrada ? "E8F8F5" : "FDEDEC" } }, font: { color: { rgb: tieneEntrada ? "1E8449" : "999999" }, bold: tieneEntrada }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado };
+                const estiloSalida = { fill: { fgColor: { rgb: tieneSalida ? "EBF5FB" : "FAFAFA" } }, font: { color: { rgb: tieneSalida ? "0056B3" : "999999" }, bold: tieneSalida }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado };
 
                 filasDetalladas.push([
                     { v: index + 1, t: "n", s: { alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } },
@@ -514,84 +494,37 @@
             hojaDetallada['!cols'] = [{ wch: 6 }, { wch: 14 }, { wch: 35 }, { wch: 18 }, { wch: 18 }];
             XLSX.utils.book_append_sheet(libro, hojaDetallada, "Lista del Mes");
 
-            // =========================================================================
-            // PESTAÑA 2: MATRIZ MENSUAL POR PROFESOR (Todos los profesores y totales)
-            // =========================================================================
             if (listaProfesores && listaProfesores.length > 0) {
                 const fechasUnicas = [...new Set(registrosMes.map(r => r.fecha))].sort();
-
-                const encabezadoMatriz = [
-                    { v: "No.", t: "s", s: estiloEncabezadoAzul },
-                    { v: "Profesor", t: "s", s: estiloEncabezadoAzul }
-                ];
-
-                fechasUnicas.forEach(f => {
-                    const dia = f.split('-')[2];
-                    encabezadoMatriz.push({ v: `Día ${dia}`, t: "s", s: estiloEncabezadoAzul });
-                });
+                const encabezadoMatriz = [{ v: "No.", t: "s", s: estiloEncabezadoAzul }, { v: "Profesor", t: "s", s: estiloEncabezadoAzul }];
+                fechasUnicas.forEach(f => { const dia = f.split('-')[2]; encabezadoMatriz.push({ v: `Día ${dia}`, t: "s", s: estiloEncabezadoAzul }); });
                 encabezadoMatriz.push({ v: "TOTAL ASISTENCIAS", t: "s", s: estiloEncabezadoAzul });
 
                 const filasMatriz = [encabezadoMatriz];
-
                 listaProfesores.forEach((profe, idx) => {
                     let totalAsistenciasProfe = 0;
-                    const fila = [
-                        { v: idx + 1, t: "n", s: { alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } },
-                        { v: profe.nombre_completo, t: "s", s: { font: { bold: true }, alignment: { horizontal: "left", vertical: "center" }, border: bordeDelgado } }
-                    ];
-
+                    const fila = [{ v: idx + 1, t: "n", s: { alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } }, { v: profe.nombre_completo, t: "s", s: { font: { bold: true }, alignment: { horizontal: "left", vertical: "center" }, border: bordeDelgado } }];
                     fechasUnicas.forEach(fecha => {
                         const reg = registrosMes.find(r => r.profesor_id === profe.id && r.fecha === fecha);
                         if (reg) {
                             totalAsistenciasProfe++;
                             const ent = reg.hora_entrada ? reg.hora_entrada.slice(0, 5) : "--";
                             const sal = reg.hora_salida ? reg.hora_salida.slice(0, 5) : "--";
-                            fila.push({
-                                v: `${ent} / ${sal}`,
-                                t: "s",
-                                s: {
-                                    fill: { fgColor: { rgb: "E8F8F5" } },
-                                    font: { color: { rgb: "1E8449" }, bold: true, sz: 10 },
-                                    alignment: { horizontal: "center", vertical: "center" },
-                                    border: bordeDelgado
-                                }
-                            });
+                            fila.push({ v: `${ent} / ${sal}`, t: "s", s: { fill: { fgColor: { rgb: "E8F8F5" } }, font: { color: { rgb: "1E8449" }, bold: true, sz: 10 }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } });
                         } else {
-                            fila.push({
-                                v: "-",
-                                t: "s",
-                                s: {
-                                    font: { color: { rgb: "999999" } },
-                                    alignment: { horizontal: "center", vertical: "center" },
-                                    border: bordeDelgado
-                                }
-                            });
+                            fila.push({ v: "-", t: "s", s: { font: { color: { rgb: "999999" } }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } });
                         }
                     });
-
-                    fila.push({
-                        v: totalAsistenciasProfe,
-                        t: "n",
-                        s: {
-                            fill: { fgColor: { rgb: "EBF5FB" } },
-                            font: { bold: true, color: { rgb: "0056B3" } },
-                            alignment: { horizontal: "center", vertical: "center" },
-                            border: bordeDelgado
-                        }
-                    });
-
+                    fila.push({ v: totalAsistenciasProfe, t: "n", s: { fill: { fgColor: { rgb: "EBF5FB" } }, font: { bold: true, color: { rgb: "0056B3" } }, alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado } });
                     filasMatriz.push(fila);
                 });
-
                 const hojaMatriz = XLSX.utils.aoa_to_sheet(filasMatriz);
                 const anchosMatriz = [{ wch: 6 }, { wch: 35 }];
                 fechasUnicas.forEach(() => anchosMatriz.push({ wch: 15 }));
                 anchosMatriz.push({ wch: 20 });
                 hojaMatriz['!cols'] = anchosMatriz;
-
                 XLSX.utils.book_append_sheet(libro, hojaMatriz, "Matriz Mensual");
             }
-
             XLSX.writeFile(libro, `Reporte_Mensual_Profesores_${mesElegido}.xlsx`);
         }
 
@@ -622,7 +555,6 @@
                 const fechaHoy = ahora.toLocaleDateString('sv-SE'); 
                 const horaActual = ahora.toLocaleTimeString('en-GB'); 
 
-                // Validación segura con .limit(1) para evitar duplicados
                 const { data: registrosHoy, error: errorBusqueda } = await clienteSupabase
                     .from('asistencias_diarias')
                     .select('*')
@@ -644,6 +576,10 @@
                     reproducirSonido('exito');
                     statusText.innerText = `✅ ENTRADA REGISTRADA: ${profe.nombre_completo}`;
                     statusText.style.color = "green";
+                    
+                    // Disparar Alerta a Telegram
+                    enviarAlertaDirectivo(`🏫 CONTROL DE ASISTENCIA\n\n🟢 ENTRADA REGISTRADA\nProfesor(a): ${profe.nombre_completo}\nHora: ${horaActual}`);
+
                 } else if (!asistencia.hora_salida) {
                     const { error: errorUpdate } = await clienteSupabase
                         .from('asistencias_diarias')
@@ -655,6 +591,10 @@
                     reproducirSonido('exito');
                     statusText.innerText = `👋 SALIDA REGISTRADA: ${profe.nombre_completo}`;
                     statusText.style.color = "blue";
+                    
+                    // Disparar Alerta a Telegram
+                    enviarAlertaDirectivo(`🏫 CONTROL DE ASISTENCIA\n\n🔵 SALIDA REGISTRADA\nProfesor(a): ${profe.nombre_completo}\nHora: ${horaActual}`);
+
                 } else {
                     reproducirSonido('alerta');
                     statusText.innerText = `⚠️ ${profe.nombre_completo} ya registró su salida hoy.`;
@@ -680,10 +620,8 @@
             }, 4000); 
         }
 
-        // --- TRADUCTOR Y OCULTADOR INTELIGENTE DE CONTROLES ---
         function traducirEscaner() {
             let camaraActiva = false;
-
             document.querySelectorAll('button').forEach(btn => {
                 if (btn.innerText.includes("Request Camera Permissions")) btn.innerText = "Permitir acceso a la cámara";
                 if (btn.innerText.includes("Start Scanning")) btn.innerText = "Iniciar cámara";
@@ -691,16 +629,12 @@
                 
                 if (btn.innerText.includes("Stop Scanning") || btn.innerText.includes("Detener cámara")) {
                     btn.innerText = "Detener cámara";
-                    if (btn.offsetParent !== null) {
-                        camaraActiva = true; 
-                    }
+                    if (btn.offsetParent !== null) { camaraActiva = true; }
                 }
             });
 
             document.querySelectorAll('#reader span').forEach(span => {
-                if (span.querySelector('select')) {
-                    span.style.display = camaraActiva ? 'none' : 'inline-block';
-                }
+                if (span.querySelector('select')) { span.style.display = camaraActiva ? 'none' : 'inline-block'; }
             });
 
             document.querySelectorAll('#reader a').forEach(a => {
@@ -729,8 +663,13 @@
         }
         
         setInterval(traducirEscaner, 500);
+        
+        // --- INICIALIZAR FUNCIONES ---
         escaner.render(onScanSuccess, onScanFailure);
         cargarAsistencias(); 
+        
+        // Ejecutar el robot auto-vinculador del directivo cada 4 segundos
+        setInterval(procesarNuevosMensajesTelegram, 4000);
 
     </script>
 </body>
